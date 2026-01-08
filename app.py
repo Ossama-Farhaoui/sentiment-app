@@ -1,21 +1,23 @@
 import streamlit as st
 import joblib
+import pandas as pd
 
-model = joblib.load("sentiment_model.pkl")
+st.set_page_config(page_title="Sentiment Amazon", page_icon="🧠", layout="wide")
 
-st.title("📝 Analyse de sentiment des avis Amazon")
+@st.cache_resource
+def load_model():
+    return joblib.load("sentiment_model.pkl")  # ⚠️ mets le bon nom du modèle
 
-txt = st.text_area("Entre un avis client")
+model = load_model()
+
+st.markdown("# 🧠 Sentiment Analyzer")
+st.write("Démo NLP — Classification d'avis Amazon")
+
+texte = st.text_area("Entrez un avis")
 
 if st.button("Prédire"):
-    if txt.strip() == "":
-        st.warning("Veuillez entrer du texte.")
+    if not texte.strip():
+        st.warning("Veuillez écrire un avis.")
     else:
-        pred = model.predict([txt])[0]
-
-        try:
-            proba = model.predict_proba([txt])[0]
-            conf = round(max(proba)*100, 2)
-            st.success(f"Résultat : **{pred}** ({conf}% confiance)")
-        except:
-            st.success(f"Résultat : **{pred}**")
+        pred = model.predict([texte])[0]
+        st.success(f"Sentiment prédit : {pred}")
