@@ -1,7 +1,7 @@
 import streamlit as st
 import joblib
 
-model = joblib.load("final_model.joblib")
+model = joblib.load("sentiment_model.pkl")
 
 st.title("📝 Analyse de sentiment des avis Amazon")
 
