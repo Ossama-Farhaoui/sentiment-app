@@ -1,25 +1,21 @@
 import streamlit as st
 import joblib
 
-model = joblib.load("sentiment_model.pkl")
+model = joblib.load("final_model.joblib")
 
 st.title("📝 Analyse de sentiment des avis Amazon")
 
-texte = st.text_area("Entrer un avis client ici")
+txt = st.text_area("Entre un avis client")
 
-if st.button("Prédire le sentiment"):
-    pred = model.predict([texte])[0]
-
-    if pred == "positive":
-        st.success("😊 Sentiment : POSITIF")
-    elif pred == "negative":
-        st.error("😠 Sentiment : NÉGATIF")
+if st.button("Prédire"):
+    if txt.strip() == "":
+        st.warning("Veuillez entrer du texte.")
     else:
-        st.info("😐 Sentiment : NEUTRE")
+        pred = model.predict([txt])[0]
 
-    try:
-        proba = model.predict_proba([texte])[0]
-        conf = round(max(proba)*100, 2)
-        st.caption(f"Confiance du modèle : {conf}%")
-    except:
-        pass
+        try:
+            proba = model.predict_proba([txt])[0]
+            conf = round(max(proba)*100, 2)
+            st.success(f"Résultat : **{pred}** ({conf}% confiance)")
+        except:
+            st.success(f"Résultat : **{pred}**")
