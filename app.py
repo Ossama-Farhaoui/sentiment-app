@@ -34,10 +34,19 @@ def load_model():
 model = load_model()
 
 # -------------------------
-# Session state
+# Session state init
 # -------------------------
 if "texte" not in st.session_state:
     st.session_state.texte = ""
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+if "last_pred" not in st.session_state:
+    st.session_state.last_pred = None
+
+if "last_proba" not in st.session_state:
+    st.session_state.last_proba = None  # (classes, proba) ou None
 
 # -------------------------
 # Header
@@ -82,67 +91,90 @@ with left:
     with colA:
         predict_btn = st.button("🔮 Prédire le sentiment", use_container_width=True)
     with colB:
-        clear_btn = st.button("🧹 Effacer", use_container_width=True)
+        clear_btn = st.button("🧹 Effacer (texte + résultat)", use_container_width=True)
 
+    # Effacer : vide texte + résultat, mais garde l'historique
     if clear_btn:
         st.session_state.texte = ""
+        st.session_state.last_pred = None
+        st.session_state.last_proba = None
         st.rerun()
 
-    st.markdown('<div class="small">Astuce : colle plusieurs lignes, ou teste avec les boutons dans la sidebar.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small">Astuce : utilise les exemples dans la sidebar pour tester vite.</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 with right:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("📊 Résultat")
 
-    if "history" not in st.session_state:
-        st.session_state.history = []
-
+    # Quand on clique sur prédire
     if predict_btn:
         if not texte.strip():
             st.warning("⚠️ Veuillez entrer un avis avant de lancer la prédiction.")
         else:
-            st.session_state.texte = texte  # on sauvegarde
+            # sauvegarde texte dans session_state
+            st.session_state.texte = texte
 
+            # prédiction
             pred = model.predict([texte])[0]
+            st.session_state.last_pred = pred
 
-            # Affichage principal
-            if pred == "positive":
-                st.success("😊 **Avis POSITIF**")
-            elif pred == "negative":
-                st.error("😠 **Avis NÉGATIF**")
-            else:
-                st.info("😐 **Avis NEUTRE**")
-
-            # Probabilités si dispo
-            proba_df = None
-            confidence = None
+            # probabilités si disponibles
             if show_proba:
                 try:
                     proba = model.predict_proba([texte])[0]
                     classes = model.classes_
-                    confidence = round(float(max(proba)) * 100, 2)
-
-                    proba_df = pd.DataFrame({
-                        "Classe": classes,
-                        "Probabilité": [round(float(p)*100, 2) for p in proba]
-                    }).sort_values("Probabilité", ascending=False)
-
-                    st.metric("Confiance du modèle", f"{confidence}%")
-                    st.progress(min(confidence/100, 1.0))
-
-                    st.dataframe(proba_df, use_container_width=True, hide_index=True)
+                    st.session_state.last_proba = (classes, proba)
                 except Exception:
-                    st.caption("Probabilités non disponibles pour ce modèle.")
+                    st.session_state.last_proba = None
 
-            # Historique
+            # historique (ON NE L’EFFACE JAMAIS avec Effacer)
             if show_history:
-                st.session_state.history.insert(0, {"Texte": texte[:120], "Prédiction": pred})
+                st.session_state.history.insert(
+                    0,
+                    {"Texte": texte[:120], "Prédiction": pred}
+                )
 
+    # Affichage du résultat (même après rerun)
+    if st.session_state.last_pred is None:
+        st.info("Aucun résultat pour le moment. Entrez un avis puis cliquez sur **Prédire**.")
+    else:
+        pred = st.session_state.last_pred
+
+        if pred == "positive":
+            st.success("😊 **Avis POSITIF**")
+        elif pred == "negative":
+            st.error("😠 **Avis NÉGATIF**")
+        else:
+            st.info("😐 **Avis NEUTRE**")
+
+        # Probabilités affichées proprement
+        if show_proba:
+            if st.session_state.last_proba is not None:
+                classes, proba = st.session_state.last_proba
+                confidence = round(float(max(proba)) * 100, 2)
+
+                st.metric("Confiance du modèle", f"{confidence}%")
+                st.progress(min(confidence / 100, 1.0))
+
+                proba_df = pd.DataFrame({
+                    "Classe": classes,
+                    "Probabilité (%)": [round(float(p) * 100, 2) for p in proba]
+                }).sort_values("Probabilité (%)", ascending=False)
+
+                st.dataframe(proba_df, use_container_width=True, hide_index=True)
+            else:
+                st.caption("Probabilités non disponibles pour ce modèle.")
+
+    # Historique
     if show_history and len(st.session_state.history) > 0:
         st.markdown("---")
         st.subheader("🕒 Historique")
-        st.dataframe(pd.DataFrame(st.session_state.history[:8]), use_container_width=True, hide_index=True)
+        st.dataframe(
+            pd.DataFrame(st.session_state.history[:10]),
+            use_container_width=True,
+            hide_index=True
+        )
 
     st.markdown('</div>', unsafe_allow_html=True)
 
