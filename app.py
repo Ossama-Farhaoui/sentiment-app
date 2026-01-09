@@ -91,7 +91,7 @@ with left:
     with colA:
         predict_btn = st.button("🔮 Prédire le sentiment", use_container_width=True)
     with colB:
-        clear_btn = st.button("🧹 Effacer ", use_container_width=True)
+        clear_btn = st.button("🧹 Effacer (texte + résultat) ", use_container_width=True)
 
     # Effacer : vide texte + résultat, mais garde l'historique
     if clear_btn:
